@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.bank_api.dto.RegisterRequest;
 import com.bank_api.model.Account;
+import com.bank_api.model.AccountType;
 import com.bank_api.model.Role;
 import com.bank_api.model.User;
 import com.bank_api.repository.AccountRepository;
@@ -43,23 +44,47 @@ public class AuthController {
             return ResponseEntity.badRequest().body("User already exists");
         }
 
+        // Convert and validate account type
+        String rawAccountType = request.getAccountType();
+        if (rawAccountType == null || rawAccountType.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Account type is required");
+        }
+
+        AccountType accountType;
+        try {
+            accountType = AccountType.valueOf(rawAccountType.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("Invalid account type: " + rawAccountType);
+        }
+
+        // Convert and validate role
+        Role role = Role.USER; // default
+        String rawRole = request.getRole();
+        if (rawRole != null && !rawRole.trim().isEmpty()) {
+            try {
+                role = Role.valueOf(rawRole.trim().toUpperCase());
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body("Invalid role: " + rawRole);
+            }
+        }
+
         // Create and save user
         User user = new User();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setRole(Role.USER); // Assign default role
+        user.setRole(role);
         userRepository.save(user);
 
         // Create and save account
         Account account = new Account();
-        account.setAccountNumber(UUID.randomUUID().toString()); // Generated automatically
-        account.setAccountType(request.getAccountType());
+        account.setAccountNumber(UUID.randomUUID().toString());
+        account.setAccountType(accountType.name()); // ✅ convert enum to string
         account.setBalance(BigDecimal.ZERO);
         account.setCreatedAt(LocalDateTime.now());
         account.setUser(user);
         accountRepository.save(account);
 
-        // Generate JWT token
+        // Generate JWT
         String jwtToken = jwtUtil.generateToken(user.getUsername());
 
         Map<String, String> response = new HashMap<>();

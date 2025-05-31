@@ -4,18 +4,16 @@ public class RegisterRequest {
 
     private String username;
     private String password;
-    private String role; // Accepts values like "USER", "ADMIN"
-    private String accountNumber;
-    private String accountType;
+    private String role;          // e.g., "USER", "ADMIN"
+    private String accountType;   // e.g., "CHECKING", "SAVINGS"
 
     public RegisterRequest() {
     }
 
-    public RegisterRequest(String username, String password, String role, String accountNumber, String accountType) {
+    public RegisterRequest(String username, String password, String role, String accountType) {
         this.username = username;
         this.password = password;
         this.role = role;
-        this.accountNumber = accountNumber;
         this.accountType = accountType;
     }
 
@@ -41,14 +39,6 @@ public class RegisterRequest {
 
     public void setRole(String role) {
         this.role = role;
-    }
-
-    public String getAccountNumber() {
-        return accountNumber;
-    }
-
-    public void setAccountNumber(String accountNumber) {
-        this.accountNumber = accountNumber;
     }
 
     public String getAccountType() {
