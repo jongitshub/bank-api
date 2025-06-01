@@ -1,17 +1,27 @@
 package com.bank_api.controller;
 
+import java.math.BigDecimal;
+import java.security.Principal;
+import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.bank_api.dto.LoanRequestDTO;
 import com.bank_api.model.Account;
+import com.bank_api.model.BankReserve;
 import com.bank_api.model.LoanRequest;
 import com.bank_api.model.User;
 import com.bank_api.repository.AccountRepository;
+import com.bank_api.repository.BankReserveRepository;
 import com.bank_api.repository.UserRepository;
 import com.bank_api.service.LoanRequestService;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.security.Principal;
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/loans")
@@ -21,14 +31,20 @@ public class LoanRequestController {
     private final UserRepository userRepository;
     private final AccountRepository accountRepository;
 
-    public LoanRequestController(
-            LoanRequestService loanRequestService,
-            UserRepository userRepository,
-            AccountRepository accountRepository) {
-        this.loanRequestService = loanRequestService;
-        this.userRepository = userRepository;
-        this.accountRepository = accountRepository;
-    }
+    private final BankReserveRepository bankReserveRepository;
+
+public LoanRequestController(
+    LoanRequestService loanRequestService,
+    UserRepository userRepository,
+    AccountRepository accountRepository,
+    BankReserveRepository bankReserveRepository // ✅ add this
+) {
+    this.loanRequestService = loanRequestService;
+    this.userRepository = userRepository;
+    this.accountRepository = accountRepository;
+    this.bankReserveRepository = bankReserveRepository; // ✅ assign it
+}
+
 
     @PostMapping("/request")
     public ResponseEntity<?> requestLoan(@RequestBody LoanRequestDTO dto, Principal principal) {
@@ -46,17 +62,33 @@ public class LoanRequestController {
     }
 
     @PostMapping("/approve/{id}")
-    public ResponseEntity<?> approveLoan(@PathVariable Long id) {
-        LoanRequest request = loanRequestService.approveRequest(id);
+@PreAuthorize("hasRole('ADMIN')")
+public ResponseEntity<?> approveLoan(@PathVariable Long id) {
+    LoanRequest request = loanRequestService.approveRequest(id);
 
-        Account account = accountRepository.findByUser(request.getUser())
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+    // Credit the user's account
+    Account account = accountRepository.findByUser(request.getUser())
+            .orElseThrow(() -> new RuntimeException("Account not found"));
 
-        account.setBalance(account.getBalance().add(request.getAmount()));
-        accountRepository.save(account);
+    account.setBalance(account.getBalance().add(request.getAmount()));
+    accountRepository.save(account);
 
-        return ResponseEntity.ok("Loan approved and funds deposited.");
+    // Subtract from bank reserve
+    BankReserve reserve = bankReserveRepository.findById(1L)
+            .orElseThrow(() -> new RuntimeException("Reserve not initialized"));
+
+    BigDecimal newBalance = reserve.getTotalFunds().subtract(request.getAmount());
+
+    if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
+        return ResponseEntity.badRequest().body("Not enough funds in reserve to approve this loan.");
     }
+
+    reserve.setTotalFunds(newBalance);
+    bankReserveRepository.save(reserve);
+
+    return ResponseEntity.ok("Loan approved and funds deposited.");
+}
+
 
     @PostMapping("/reject/{id}")
     public ResponseEntity<?> rejectLoan(@PathVariable Long id) {
