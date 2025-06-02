@@ -37,10 +37,15 @@ public class LoanRequestService {
                 .toList();
     }
 
+    public List<LoanRequest> getApprovedLoans() {
+        return loanRequestRepository.findByStatus(LoanStatus.APPROVED);
+    }
+
     public LoanRequest approveRequest(Long id) {
         LoanRequest request = loanRequestRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Loan not found"));
         request.setStatus(LoanStatus.APPROVED);
+        request.setApprovedAt(LocalDateTime.now());
         return loanRequestRepository.save(request);
     }
 

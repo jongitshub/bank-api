@@ -3,6 +3,7 @@ package com.bank_api.controller;
 import java.math.BigDecimal;
 import java.security.Principal;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -95,4 +96,22 @@ public ResponseEntity<?> approveLoan(@PathVariable Long id) {
         loanRequestService.rejectRequest(id);
         return ResponseEntity.ok("Loan rejected.");
     }
+    @GetMapping("/approved")
+@PreAuthorize("hasRole('ADMIN')")
+public ResponseEntity<List<LoanRequestDTO>> getApprovedLoans() {
+    List<LoanRequest> approvedLoans = loanRequestService.getApprovedLoans();
+
+    List<LoanRequestDTO> result = approvedLoans.stream()
+        .map(loan -> new LoanRequestDTO(
+            loan.getAmount(),
+            loan.getUser().getUsername(), // or use getAccount().getAccountNumber()
+            loan.getApprovedAt()
+        ))
+        .collect(Collectors.toList());
+
+    return ResponseEntity.ok(result);
+}
+
+
+
 }

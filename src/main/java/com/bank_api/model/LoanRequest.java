@@ -41,8 +41,20 @@ public class LoanRequest {
         this.requestedAt = requestedAt;
     }
 
+    private LocalDateTime approvedAt;
+
+
     // Getters and setters
     // ...
+
+    public LocalDateTime getApprovedAt() {
+    return approvedAt;
+}
+
+public void setApprovedAt(LocalDateTime approvedAt) {
+    this.approvedAt = approvedAt;
+}
+
     public Long getId() {
     return id;
 }
